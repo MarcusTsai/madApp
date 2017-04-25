@@ -1,0 +1,68 @@
+<div class="row">
+    <div class="col-md-9">
+        <div class="well well-lg">
+            <div class="row">
+                <div class="col-md-8">
+                    <!-- Add application details here -->
+                    <h4> {{ai.selected_app.app_name}} </h4> App Owner: {{ai.selected_app.owner}}
+                    <br/> App Details: {{ai.selected_app.desc}}
+                    <br/> Contact: {{ai.selected_app.email}}
+                    <br/> Parts: {{ai.selected_app.components}}
+                    <br/> App ID: {{ai.selected_app.app_id}}
+                    <div>
+                        Current instances
+                        <div class="list-group">
+                            <div ng-repeat="v in ai.all_installs">
+                                <button data-toggle="collapse" data-target="#{{v.id}}" aria-expanded="false" class="list-group-item">{{v.name}}</button>
+                                <div class="collapse" id="{{v.id}}">
+                                    <div class="well">
+                                        This is {{v.name}}
+                                        <br/>
+                                        <button class="btn btn-info btn-sm" data-toggle="modal" data-target="#install_modal" ng-click="ai.openModal(v)">QR Code</button>
+                                        <button class="btn btn-danger btn-sm pull-right" ng-click="ai.removeInstall(v.id)">Remove</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-success" data-toggle="modal" data-target="#install_modal" ng-click="ai.openModal()">Install</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="list-group">
+            <a class="list-group-item" ng-repeat="(k,v) in ai.apps" ng-class="{'active': k === ai.selected_id}" ng-click="ai.showDetail(k)">{{v.app_name}}</a>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="install_modal" tabindex="-1" role="dialog" data-backdrop="static">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button ng-if="!ai.showEdit" type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">{{ai.modal_title}}</h4>
+            </div>
+            <div class="modal-body">
+                <div ng-if="ai.inst_hash">
+                    <label>Please scan QR Code below.</label>
+                    <img class="center-block" ng-src="https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl={{ai.inst_hash}}">
+                </div>
+                <div ng-if="!ai.inst_hash">
+                    <label>Waiting for installation instruction.</label>
+                </div>
+                <form class="form-inline" ng-if="ai.showEdit" ng-submit="ai.saveName()">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Name your instance" ng-model="ai.new_install_name" required="required">
+                    </div>
+                    <div class="form-group">
+                        <input type="number" class="form-control" placeholder="Number of devices" ng-model="ai.new_device_num" required="required">
+                    </div>
+                    <button type="submit" class="btn btn-info pull-right">Save</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

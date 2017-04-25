@@ -1,0 +1,94 @@
+<div class="modal fade" id="add_device" tabindex="-1" role="dialog" data-backdrop="static">
+    <div class="modal-dialog  modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">Add another device</h4>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div ng-if="av.qrcode"> Please scan the QR code on right with the device you are adding.</div>
+                        <form id="new_device" ng-if="!av.qrcode" ng-submit="av.addDevice()">
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" ng-model="av.sensors.light.on" data-toggle="collapse" data-target="#lightSensor"> Light Sensor
+                                </label>
+                            </div>
+                            <div class="collapse" id="lightSensor">
+                                <div class="well">
+                                    <div class="form-group">
+                                        <label for="exampleInputEmail1">Sampling Interval</label>
+                                        <input type="number" ng-model="av.sensors.light.interval" class="form-control" placeholder="Sampling Interval">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="exampleInputPassword1">Threshold</label>
+                                        <input type="number" ng-model="av.sensors.light.threshold"  class="form-control" placeholder="Sensor threshold">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" ng-model="av.sensors.sound.on" data-toggle="collapse" data-target="#soundSensor"> Sound Sensor
+                                </label>
+                            </div>
+                            <div class="collapse" id="soundSensor">
+                                <div class="well">
+                                    <div class="form-group">
+                                        <label for="exampleInputEmail1">Sampling Interval</label>
+                                        <input type="number" ng-model="av.sensors.sound.interval" class="form-control" placeholder="Sampling Interval">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="exampleInputPassword1">Threshold</label>
+                                        <input type="number" ng-model="av.sensors.sound.threshold" class="form-control" placeholder="Sensor threshold">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" ng-model="av.sensors.accel.on" data-toggle="collapse" data-target="#accelerometer">  Accelerometer
+                                </label>
+                            </div>
+                            <div class="collapse" id="accelerometer">
+                                <div class="well">
+                                    <div class="form-group">
+                                        <label for="exampleInputEmail1">Sampling Interval</label>
+                                        <input type="number" ng-model="av.sensors.accel.interval" class="form-control" placeholder="Sampling Interval">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="exampleInputPassword1">Threshold</label>
+                                        <input type="number" ng-model="av.sensors.accel.threshold" class="form-control" placeholder="Sensor threshold">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" ng-model="av.sensors.gyro.on" data-toggle="collapse" data-target="#gyroscope"> Gyroscope
+                                </label>
+                            </div>
+                            <div class="collapse" id="gyroscope">
+                                <div class="well">
+                                    <div class="form-group">
+                                        <label for="exampleInputEmail1">Sampling Interval</label>
+                                        <input type="number" ng-model="av.sensors.gyro.interval" class="form-control" placeholder="Sampling Interval">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="exampleInputPassword1">Threshold</label>
+                                        <input type="number" ng-model="av.sensors.gyro.threshold" class="form-control" placeholder="Sensor threshold">
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <img class="img-responsive" ng-if="av.qrcode" ng-src="{{av.qrcode}}">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button ng-if="!av.qrcode" type="submit" form="new_device" class="btn btn-primary">Add device</button>
+                <button ng-if="av.qrcode" ng-click="av.resetModal()" class="btn btn-success">Done</button>
+            </div>
+        </div>
+    </div>
+</div>

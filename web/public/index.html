@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html ng-app="madAPP">
+
+<head>
+    <meta charset="utf-8">
+    <title>Mad App</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <style media="screen">
+    body {
+        background: #ECEFF1;
+        color: rgba(0, 0, 0, 0.87);
+    }
+    </style>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.8/angular.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/lodash/4.16.2/lodash.core.min.js"></script>
+    <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="//npmcdn.com/angular-ui-router/release/angular-ui-router.min.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/firebasejs/3.3.2/firebase.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/lodash/4.16.6/lodash.core.min.js"></script>
+    <script type="text/javascript">
+    var madAPP = angular.module('madAPP', ['ui.router']);
+    </script>
+    <script type="text/javascript" src="/static/js/main.js"></script>
+    <script type="text/javascript" src="/static/js/sensors.js"></script>
+    <script type="text/javascript" src="/static/js/router.js"></script>
+    <script type="text/javascript" src="/static/js/demo_light.js"></script>
+    <script type="text/javascript" src="/static/js/demo_queue.js"></script>
+    <script type="text/javascript" src="/static/js/demo_chair.js"></script>
+    <script type="text/javascript" src="/static/js/logicBuilder.js"></script>
+    <script type="text/javascript" src="/static/js/appInstaller.js"></script>
+    <script type="text/javascript">
+    // Set the configuration for your app
+    // Initialize Firebase
+    var config = {
+        apiKey: "AIzaSyAGCZbEkvC0hTGh5M-YABT9_KCTQ5jK5bo",
+        authDomain: "ad-hoc-building-sensor-devices.firebaseapp.com",
+        databaseURL: "https://ad-hoc-building-sensor-devices.firebaseio.com",
+        storageBucket: "ad-hoc-building-sensor-devices.appspot.com",
+    };
+    firebase.initializeApp(config);
+    </script>
+</head>
+
+<body>
+    <!-- NAVIGATION -->
+    <nav class="navbar navbar-inverse" role="navigation">
+        <div class="navbar-header">
+            <a class="navbar-brand" ui-sref="home">madAPP</a>
+        </div>
+        <ul class="nav navbar-nav">
+            <li><a ui-sref="home" ui-sref-active="active">Home</a></li>
+            <li><a ui-sref="demo_light" ui-sref-active="active">Demo Smart Light</a></li>
+            <li><a ui-sref="demo_queue" ui-sref-active="active">Demo Smart Queue</a></li>
+            <li><a ui-sref="demo_chair" ui-sref-active="active">Demo Smart Chair</a></li>
+        </ul>
+    </nav>
+    <!-- MAIN CONTENT -->
+    <div class="container">
+        <div ui-view></div>
+    </div>
+</body>
+
+</html>

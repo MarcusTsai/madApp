@@ -1,0 +1,9 @@
+<h4>Application {{av.curApp.name}}</h4>
+<h6>Total numer of devices needed: {{av.curApp.devNum}} </h6>
+<ul>
+    <li ng-repeat="(k, v) in av.curApp.devices"><a href="#">{{k}}</a></li>
+</ul>
+<div ng-include="av.addDeviceTemplate"></div>
+<button type="button" class="btn btn-success" data-toggle="modal" data-target="#add_device" ng-if="av.showAddBtn()">
+    Add another device
+</button>
