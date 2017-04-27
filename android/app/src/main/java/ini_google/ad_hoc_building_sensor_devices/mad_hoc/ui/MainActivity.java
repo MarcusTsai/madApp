@@ -73,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void afterTextChanged(Editable s) {
                 instanceID = s.toString();
+                System.out.println("instanceID:" + instanceID);
                 if(instanceID != null) {
                     //textView.setText(instanceID);
                     downloadDefaultConfig();
@@ -143,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     //fetch application Id from firebase
                     JSONObject appInfo = new JSONObject((HashMap) dataSnapshot.getValue());
-                    String appID = appInfo.get("app_id").toString();
+                    final String appID = appInfo.get("app_id").toString();
                     applicationInfo = database.getReference("/apps/".concat(appID));
                     defaultConfig = applicationInfo.child("default_config");
                     defaultConfig.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -157,6 +158,8 @@ public class MainActivity extends AppCompatActivity {
                                 Intent intent = new Intent(MainActivity.this, ListActivity.class);
                                 intent.putExtra("sensorConfig", configFromFireBase.toString());
                                 intent.putExtra("instanceID", instanceID);
+                                intent.putExtra("appID", appID);
+                                System.out.println("Jump to list");
                                 startActivity(intent);
 
                             } catch (Exception e) {

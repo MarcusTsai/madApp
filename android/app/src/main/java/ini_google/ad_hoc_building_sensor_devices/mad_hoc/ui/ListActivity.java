@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import ini_google.ad_hoc_building_sensor_devices.R;
 import ini_google.ad_hoc_building_sensor_devices.mad_hoc.adapters.SensorListAdapter;
@@ -47,6 +48,9 @@ public class ListActivity extends AppCompatActivity implements SensorEventListen
     private TextView AppName;
 
     private String targetSensor = null;
+    private String instanceID = null;
+    private String appID = null;
+    private int phoneCount = 0;
 
     private Button deployButton, calibrateButton,backButton;
     private Spinner spinner;
@@ -85,13 +89,15 @@ public class ListActivity extends AppCompatActivity implements SensorEventListen
 
         final Bundle bundle = getIntent().getExtras();
         configData = bundle.get("sensorConfig").toString();
+        instanceID = bundle.get("instanceID").toString();
+        appID = bundle.get("appID").toString();
         System.out.println("configData:" + configData);
         progressBar = (ProgressBar) findViewById(R.id.progressBar);
 
         // get the listview, (ViewHolder)
         expListView = (ExpandableListView) findViewById(R.id.sensorList);
 
-        setAppNamefromInstanceID(bundle.get("instanceID").toString());
+        setAppNamefromInstanceID();
         // set up spinner
         ArrayList<String> listItem = new ArrayList<>();
 
@@ -144,20 +150,22 @@ public class ListActivity extends AppCompatActivity implements SensorEventListen
         deployButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // check firebase
-
-                if(!deviceConfig.isEmpty()){
-                    Intent intent = null;
-                    if(!targetSensor.isEmpty()) {
-                        intent = new Intent(ListActivity.this, SensorActivity.class);
-                        intent.putExtra("sensorConfig", deviceConfig);
-                        intent.putExtra("avgValue", String.valueOf(avgValue));
-                        intent.putExtra("instanceID", bundle.get("instanceID").toString());
-                    }
-                    startActivity(intent);
-                } else {
-                    Toast.makeText(ListActivity.this, "device configuration is empty", Toast.LENGTH_LONG).show();
-                }
+                checkNodeInFirebase();
+//                System.out.println("targetSensorExist:" + targetSensorExist);
+//                if(!targetSensorExist && !deviceConfig.isEmpty()){
+//                    System.out.println("Jump to activity");
+//                    if(!targetSensor.isEmpty()) {
+//                        Intent intent = new Intent(ListActivity.this, SensorActivity.class);
+//                        intent.putExtra("sensorConfig", deviceConfig);
+//                        intent.putExtra("avgValue", String.valueOf(avgValue));
+//                        intent.putExtra("instanceID", bundle.get("instanceID").toString());
+//                        startActivity(intent);
+//                    }
+//                } else if(deviceConfig.isEmpty()){
+//                    Toast.makeText(ListActivity.this, "device configuration is empty", Toast.LENGTH_LONG).show();
+//                } else {
+//                    Toast.makeText(ListActivity.this, "target sensor/actuator has been chosen", Toast.LENGTH_LONG).show();
+//                }
             }
         });
 
@@ -168,14 +176,83 @@ public class ListActivity extends AppCompatActivity implements SensorEventListen
                 startActivity(intent);
             }
         });
+    }
 
+    private void checkNodeInFirebase() {
+        DatabaseReference device = database.getReference("/apps/").child(appID).child("default_config").child(targetSensor).child("num_devices");
+        device.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                phoneCount = Integer.parseInt(dataSnapshot.getValue().toString());
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
+        DatabaseReference applicationInfo;
+        //reference for the application
+        if(targetSensor.equals("light") || targetSensor.equals("accelerometer")
+                || targetSensor.equals("camera")) {
+            applicationInfo = database.getReference("/install_sensors");
+        } else {
+            applicationInfo = database.getReference("/install_actuators");
+        }
+
+        //fetch reference of Instance
+        final DatabaseReference instanceInfo = applicationInfo.child(instanceID);
+        instanceInfo.addListenerForSingleValueEvent(new ValueEventListener() {
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                try {
+                    System.out.println("targetSensor:" + targetSensor);
+                    if (targetSensor != null) {
+                        System.out.println("phoneCount:" + phoneCount);
+                        boolean targetSensorExist = dataSnapshot.hasChild(targetSensor);
+                        int curCount = 0;
+                        if(targetSensorExist) {
+                          curCount = (int)dataSnapshot.child(targetSensor).getChildrenCount();
+                          System.out.println("curCount:" + curCount);
+                        }
+
+                        boolean registerenble = !targetSensorExist || (targetSensorExist && (curCount < phoneCount));
+                        System.out.println("firebase:" + dataSnapshot.toString());
+
+                        if(registerenble && !deviceConfig.isEmpty()){
+                            System.out.println("Jump to activity");
+                            if(!targetSensor.isEmpty()) {
+                                Intent intent = new Intent(ListActivity.this, SensorActivity.class);
+                                intent.putExtra("sensorConfig", deviceConfig);
+                                intent.putExtra("avgValue", String.valueOf(avgValue));
+                                intent.putExtra("instanceID", instanceID);
+                                intent.putExtra("targetSensor", targetSensor);
+                                startActivity(intent);
+                            }
+                        } else if(deviceConfig.isEmpty()){
+                            Toast.makeText(ListActivity.this, "device configuration is empty", Toast.LENGTH_LONG).show();
+                        } else {
+                            Toast.makeText(ListActivity.this, "target sensor/actuator has been chosen", Toast.LENGTH_LONG).show();
+                        }
+
+                    }
+                    //System.out.println("targetSensorExist1:" + targetSensorExist);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+
+        });
     }
 
     public void startCalibration(){
-        if(targetSensor.equals("light") || targetSensor.equals("pid")){
+        if(targetSensor.equals("light") || targetSensor.equals("pd")){
             mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
             mSensorManager.registerListener((SensorEventListener) this,mSensor,100000);
-
         }
         else {
             setCalibration();
@@ -185,7 +262,7 @@ public class ListActivity extends AppCompatActivity implements SensorEventListen
 
     // calibration
     public void onSensorChanged(SensorEvent event) {
-        if(targetSensor.equals("light") || targetSensor.equals("PID")) {
+        if(targetSensor.equals("light") || targetSensor.equals("PD")) {
             float sensor_value = event.values[0];
             if(calibrationCount == 0) {
                 avgValue = sensor_value;
@@ -215,11 +292,11 @@ public class ListActivity extends AppCompatActivity implements SensorEventListen
             }
         }
         // threshold for person identification
-        if(targetSensor.equals("pid")){
+        if(targetSensor.equals("pd")){
             try {
-                JSONObject pidconfig = (new JSONObject(configData)).getJSONObject("pid");
-                pidconfig.put("count", 0);
-                configData = ((new JSONObject(configData)).put("pid",pidconfig)).toString();
+                JSONObject pidconfig = (new JSONObject(configData)).getJSONObject("pd");
+                pidconfig.put("value", 0);
+                configData = ((new JSONObject(configData)).put("pd",pidconfig)).toString();
 
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -277,7 +354,7 @@ public class ListActivity extends AppCompatActivity implements SensorEventListen
                 parameters.add(parameter);
             }
 
-            if ((key.equals("light") || key.equals("pid")) && configSensor.has("sampling_rate")) {
+            if ((key.equals("light") || key.equals("pd")) && configSensor.has("sampling_rate")) {
                 parameter = new Parameter("sampling_rate", configSensor.get("sampling_rate").toString(), "Int");
                 parameters.add(parameter);
             }
@@ -322,7 +399,7 @@ public class ListActivity extends AppCompatActivity implements SensorEventListen
 
 
     // why do we need this?
-    private void setAppNamefromInstanceID(String instanceID) {
+    private void setAppNamefromInstanceID() {
         DatabaseReference applicaton = database.getReference("app_ids").child(instanceID);
         applicaton.addListenerForSingleValueEvent( new ValueEventListener() {
 

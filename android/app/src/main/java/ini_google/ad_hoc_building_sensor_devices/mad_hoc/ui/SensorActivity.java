@@ -43,6 +43,7 @@ import java.util.Date;
 import java.util.EventListener;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Locale;
 import java.util.Map;
 
@@ -63,7 +64,7 @@ import ini_google.ad_hoc_building_sensor_devices.R;
  */
 public class SensorActivity extends AppCompatActivity implements SensorEventListener{
     private static final String TAG = "SensorActivity";
-    private Activity activity = this;
+    private final int RINGBUFSIZE = 5;
     private String androidID;
 
     private FirebaseDatabase database = FirebaseDatabase.getInstance();
@@ -81,8 +82,11 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
     //private int avgReading;
     // get the value from firebase?
     private float lightThreshold;
+    private LinkedList<Float> ringbuffer;
+    private float sum = 0.0f;
     private String instanceID ;
     private String type;
+    private String targetSensor = null;
 
     private Sensor accelerometer;
     private float mAccel;
@@ -91,6 +95,8 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
 
     private TextView textView;
     private TextToSpeech speaker;
+
+    public ValueEventListener listener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,6 +109,7 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
         sensorType = (TextView) findViewById(R.id.sensorType);
         configView = (TextView) findViewById(R.id.configuration);
         Bundle bundle = getIntent().getExtras();
+        targetSensor = bundle.get("targetSensor").toString();
 
         // device ID
         androidID = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
@@ -113,6 +120,7 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
         // sensors
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mSensor = null;
+        ringbuffer = new LinkedList<Float>();
 
         // textView = (TextView) findViewById(R.id.textView);
         mAccel = 0.00f;
@@ -140,7 +148,7 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
                 int role = getResources().getIdentifier(parameterType, "String", getPackageName());
                 this.type = parameterType;
 
-                if (parameterType.equals("LIGHT") || parameterType.equals("PID") || parameterType.equals("ACCELEROMETER")) {
+                if (parameterType.equals("LIGHT") || parameterType.equals("PD") || parameterType.equals("ACCELEROMETER")) {
                     configureSensors(parameter,parameterType);
 
                 }
@@ -153,9 +161,11 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
                 }
 
                 if(parameterType.equals("CAMERA")){
-                    Intent intent = new Intent(activity, MultiTrackerActivity.class);
-                    sensors.child(this.instanceID).child(parameter).child(device_id).child(((JSONObject)this.deviceConfig.get(parameter)).get("queue_number").toString()).setValue(true);
-                    intent.putExtra("sensor_url","install_sensors".concat("/").concat(this.instanceID).concat("/").concat(parameter).concat("/").concat(device_id).concat("/").concat(((JSONObject)this.deviceConfig.get(parameter)).get("queue_number").toString()));
+                    Intent intent = new Intent(SensorActivity.this, MultiTrackerActivity.class);
+                    System.out.println("parameter:" + parameter);
+                    sensors.child(instanceID).child(parameter).child(device_id).child("value").setValue("0");
+                    sensors.child(instanceID).child(parameter).child(device_id).child(((JSONObject)this.deviceConfig.get(parameter)).toString()).setValue(true);
+                    intent.putExtra("sensor_url","install_sensors".concat("/").concat(this.instanceID).concat("/").concat(parameter).concat("/").concat(device_id).concat("/").concat(((JSONObject)this.deviceConfig.get(parameter)).toString()));
                     intent.putExtra("instanceID", instanceID);
                     startActivity(intent);
                 }
@@ -168,8 +178,14 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
         cancelButton.setOnClickListener(new View.OnClickListener(){
             public void onClick(View v) {
                 //mSensorManager.unregisterListener();
+                // delete node
+                if (targetSensor.equals("flash") || targetSensor.equals("screen") || targetSensor.equals("speaker")) {
+                    actuators.removeEventListener(listener);
+                }
+                deleteNodeInFirebase();
+
                 Intent intent = new Intent();
-                intent.setClass(activity, MainActivity.class);
+                intent.setClass(SensorActivity.this, MainActivity.class);
                 startActivity(intent);
             }
         });
@@ -181,6 +197,18 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
         super.onPause();
         mSensorManager.unregisterListener(this);
     }
+
+    private void deleteNodeInFirebase() {
+        DatabaseReference applicationInfo;
+        //reference for the application
+        if(targetSensor.equals("light") || targetSensor.equals("accelerometer")) {
+            applicationInfo = database.getReference("/install_sensors");
+        } else {
+            applicationInfo = database.getReference("/install_actuators");
+        }
+        applicationInfo.child(instanceID).child(targetSensor).removeValue();
+    }
+
 
     /**
      *  Actuators
@@ -199,8 +227,8 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
         // flash
         if(this.type.equals("FLASH")) {
             actuators.setValue(false);
-            actuators.addValueEventListener(new ValueEventListener() {
-
+            actuators.addValueEventListener(listener = new ValueEventListener() {
+                //listener = this;
                 public void onDataChange(DataSnapshot dataSnapshot) {
                     String flashON = dataSnapshot.getValue().toString();
                     if (flashON.equals("true")) {
@@ -219,7 +247,7 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
 
         // screen
         if(this.type.equals("SCREEN")) {
-            Intent intent = new Intent(activity, QueueDisplayActivity.class);
+            Intent intent = new Intent(SensorActivity.this, QueueDisplayActivity.class);
 
             actuators.setValue(true);
             intent.putExtra("actuator_url","install_actuators".concat("/").concat(this.instanceID).concat("/").concat(parameter).concat("/").concat(device_id));
@@ -235,13 +263,21 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
                     if(status != TextToSpeech.ERROR) {
                         speaker.setLanguage(Locale.US);
                     }
+
                 }
             });
-            actuators.setValue(false);
-            actuators.addValueEventListener(new ValueEventListener() {
+            // default value
+            actuators.setValue("");
+            actuators.addValueEventListener(listener = new ValueEventListener() {
+
                 public void onDataChange(DataSnapshot dataSnapshot) {
                     String speakerText = dataSnapshot.getValue().toString();
-                    speakMessage(speakerText);
+                    //System.out.println("speaker text:" + speakerText);
+                    //System.out.println("speaker length:" + speakerText.length());
+                    if(speakerText.length() != 0) {
+                        speakMessage(speakerText);
+                        database.getReference("/install_actuators").child(instanceID).child("speaker").child(device_id).setValue("");
+                    }
                 }
                 @Override
                 public void onCancelled(DatabaseError databaseError) {
@@ -251,7 +287,7 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
         }
     }
 
-    // why use
+
     // flash
     private void turnOnFlashLight() {
         //here to judge if flash is available
@@ -297,7 +333,8 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
 
     // speaker
     private void speakMessage(String speakerText){
-        Toast.makeText(activity, "speaker invoked", Toast.LENGTH_SHORT).show();
+        // source from firebase
+        Toast.makeText(SensorActivity.this, "speaker invoked", Toast.LENGTH_SHORT).show();
         speaker.speak(speakerText, TextToSpeech.QUEUE_FLUSH, null, null);
     }
 
@@ -307,7 +344,7 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
         Map<String, Object> configuration = gson.fromJson(deviceConfig.toString(), Map.class );
         configView.setText(deviceConfig.toString());
         devices.child(instanceID).child(androidID).child("config").updateChildren(configuration);
-        Toast.makeText(activity, "Configuration Deployed Successfully", Toast.LENGTH_LONG).show();
+        Toast.makeText(SensorActivity.this, "Configuration Deployed Successfully", Toast.LENGTH_LONG).show();
     }
 
     /**
@@ -322,7 +359,7 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
     private void configureSensors(String parameter, String parameterType){
         try {
 
-            sensors = database.getReference("install_sensors").child(this.instanceID).child(parameter).child(device_id);
+            sensors = database.getReference("install_sensors").child(instanceID).child(parameter).child(device_id);
 
             setAppNamefromInstanceID(this.instanceID);
             sensorType.setText(parameterType);
@@ -331,7 +368,7 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
             JSONObject config = (JSONObject)(this.deviceConfig.get(parameter));
 
             // light sensor
-            if(parameterType.equals("LIGHT") || parameterType.equals("PID")) {
+            if(parameterType.equals("LIGHT") || parameterType.equals("PD")) {
                 mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
                 // ?
                 //avgReading = Integer.parseInt(config.get("threshold").toString());
@@ -433,12 +470,22 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
         }
 
         // person identification
-        if(this.type.equals("PID")) {
+        if(this.type.equals("PD")) {
             float sensor_value = event.values[0];
             sensorValue.setText(Float.toString(sensor_value));
             sensors.child("value").setValue(0);
             // how to get threshold?
-            if(sensor_value < lightThreshold) {
+            float avg_sensor_value = 0.0f;
+            if(ringbuffer.size() == RINGBUFSIZE) {
+               sum -= ringbuffer.poll();
+            }
+
+            ringbuffer.offer(sensor_value);
+            sum += sensor_value;
+            avg_sensor_value = sum / ringbuffer.size();
+
+
+            if(avg_sensor_value < lightThreshold) {
                 sensors.child("value").setValue(1);
                 sensors.child("last_modified").setValue(Long.toString(new Date().getTime()));
             }
@@ -456,7 +503,7 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
             System.out.println("mAccel threshold:" + accThreshold);
             sensors.child("value").setValue(false);
             if(Math.abs(mAccel) > accThreshold) {
-                Toast.makeText(activity, "Motion detected!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(SensorActivity.this, "Motion detected!", Toast.LENGTH_SHORT).show();
                 sensors.child("value").setValue(true);
                 sensors.child("last_modified").setValue(Long.toString(new Date().getTime()));
                 sensorValue.setText(Float.toString(mAccel));
@@ -470,7 +517,4 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
     }
-
-
-
 }

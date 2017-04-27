@@ -12,6 +12,7 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.provider.Settings;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -27,8 +28,11 @@ import com.google.android.gms.vision.CameraSource;
 import com.google.android.gms.vision.MultiDetector;
 import com.google.android.gms.vision.MultiProcessor;
 import com.google.android.gms.vision.face.FaceDetector;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -50,10 +54,11 @@ public class MultiTrackerActivity extends AppCompatActivity{
     private CameraSource mCameraSource = null;
     private CameraSourcePreview mPreview;
     private GraphicOverlay mGraphicOverlay;
+    private String instanceID = null;
+    private String deviceID = null;
     public static int OffsetThread = 0;
-    private Button backButton;
+    private Button backButton, confirmButton;
     private static TextView faceCount;
-    private Activity activity = this;
     public static List<Integer> idList;
     private FirebaseDatabase database = FirebaseDatabase.getInstance();
     private DatabaseReference sensors;
@@ -69,13 +74,17 @@ public class MultiTrackerActivity extends AppCompatActivity{
             super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_tracker);
             backButton = (Button) findViewById(R.id.cancelButton);
+            confirmButton = (Button) findViewById(R.id.confirmButton);
             faceCount = (TextView) findViewById(R.id.faceCount);
             mPreview = (CameraSourcePreview) findViewById(R.id.preview);
             mGraphicOverlay = (GraphicOverlay) findViewById(R.id.faceOverlay);
             idList = new ArrayList<Integer>();
             final Bundle bundle = getIntent().getExtras();
-            String sensor_url = bundle.get("sensor_url").toString();
-            sensors = database.getReference(sensor_url);
+            //String sensor_url = bundle.get("sensor_url").toString();
+            //System.out.println("sensor_url:" + sensor_url);
+            instanceID = bundle.get("instanceID").toString();
+            deviceID = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+            sensors = database.getReference("install_sensors/" + instanceID + "/" + "camera/" + deviceID);
 
             // Check for the camera permission before accessing the camera.  If the
             // permission is not granted yet, request permission.
@@ -86,29 +95,78 @@ public class MultiTrackerActivity extends AppCompatActivity{
                 requestCameraPermission();
             }
 
+
             backButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    Intent intent = new Intent(activity, MainActivity.class);
+                    // close handler
+                    if(handler != null) {
+                      handler.removeCallbacksAndMessages(null);
+                    }
+                    deleteNodeInFirebase();
+
+                    Intent intent = new Intent(MultiTrackerActivity.this, MainActivity.class);
                     startActivity(intent);
                 }
             });
+
+            confirmButton.setOnClickListener(new View.OnClickListener(){
+                @Override
+                public void onClick(View v) {
+                    sensors.child("value").setValue(String.valueOf(idList.size()));
+                    sensors.child("last_modified").setValue(new Date().getTime());
+                }
+            });
+
+            // confirm the face count and sent it to firebase
 
             handler = new Handler() {
                 @Override
                 public void handleMessage(Message msg) {
                     faceCount.setText(String.valueOf(idList.size()));
-                    sensors.child("value").setValue(idList.size());
-                    sensors.child("last_modified").setValue(new Date().getTime());
+                    System.out.println("value:" + idList.size());
+                    checkNodeInFirebase();
+
+                    //sensors.child("value").setValue(idList.size());
+                    //sensors.child("last_modified").setValue(new Date().getTime());
                     //System.out.println("test");
+                    //deleteNodeInFirebase();
                 }
             };
+
         }
         catch (Exception e){
             e.printStackTrace();
         }
     }
 
+    private void deleteNodeInFirebase() {
+        //DatabaseReference applicationInfo;
+        //reference for the application
+        database.getReference("/install_sensors").child(instanceID).child("camera").removeValue();
+    }
+
+    private void checkNodeInFirebase() {
+        confirmButton.setEnabled(false);
+        DatabaseReference applicationInfo = database.getReference("/install_sensors");
+        final DatabaseReference instanceInfo = applicationInfo.child(instanceID);
+        instanceInfo.addListenerForSingleValueEvent(new ValueEventListener() {
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                try {
+                    boolean enable = (dataSnapshot.child("camera").child(deviceID).child("value").getValue().equals("0"));
+                    System.out.println("enable:" + enable);
+                    System.out.println("cvalue:" + dataSnapshot.child("camera").child(deviceID).child("value"));
+                    confirmButton.setEnabled(enable);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+    }
 
     /**
      * Handles the requesting of the camera permission.  This includes
