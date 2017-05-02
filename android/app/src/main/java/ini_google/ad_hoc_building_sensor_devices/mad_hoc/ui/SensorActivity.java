@@ -486,19 +486,19 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
             avg_sensor_value = sum / ringbuffer.size();
 
             System.out.println("avg_sensor_value:" + avg_sensor_value + " lightThread:" + lightThreshold);
-            if(Math.abs(lightThreshold - avg_sensor_value) > 200.0) {
+            if(Math.abs(lightThreshold - avg_sensor_value) > 150.0) {
                 Onecount++;
                 //sensors.child("value").setValue(1);
                 //sensors.child("last_modified").setValue(Long.toString(new Date().getTime()));
             }
 
-            if(Onecount == 5) {
+            if(Onecount == 3) {
                 sensors.child("value").setValue(1);
                 sensors.child("last_modified").setValue(Long.toString(new Date().getTime()));
                 Onecount = 0;
             } else {
                 sensors.child("value").setValue(0);
-                sensors.child("last_modified").setValue(Long.toString(new Date().getTime()));
+                //sensors.child("last_modified").setValue(Long.toString(new Date().getTime()));
             }
 
             //sensors.child("last_modified").setValue(Long.toString(new Date().getTime()));
