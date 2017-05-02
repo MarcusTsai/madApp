@@ -250,7 +250,7 @@ public class ListActivity extends AppCompatActivity implements SensorEventListen
     }
 
     public void startCalibration(){
-        if(targetSensor.equals("light") || targetSensor.equals("pd")){
+        if(targetSensor.equals("light") || targetSensor.equals("person_detection")){
             mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
             mSensorManager.registerListener((SensorEventListener) this,mSensor,100000);
         }
@@ -262,7 +262,7 @@ public class ListActivity extends AppCompatActivity implements SensorEventListen
 
     // calibration
     public void onSensorChanged(SensorEvent event) {
-        if(targetSensor.equals("light") || targetSensor.equals("PD")) {
+        if(targetSensor.equals("light") || targetSensor.equals("person_detection")) {
             float sensor_value = event.values[0];
             if(calibrationCount == 0) {
                 avgValue = sensor_value;
@@ -271,10 +271,17 @@ public class ListActivity extends AppCompatActivity implements SensorEventListen
             avgValue += sensor_value;
         }
 
-        if(calibrationCount == 149) {
+        if(targetSensor.equals("light") && calibrationCount == 149) {
             calibrationCount = 0;
             avgValue = avgValue/150;
             mSensorManager.unregisterListener(this);
+            setCalibration();
+        }
+        if(targetSensor.equals("person_detection") && calibrationCount == 30) {
+            calibrationCount = 0;
+            avgValue = avgValue/30;
+            mSensorManager.unregisterListener(this);
+            System.out.println("avgValue:" + avgValue);
             setCalibration();
         }
     }
@@ -292,11 +299,11 @@ public class ListActivity extends AppCompatActivity implements SensorEventListen
             }
         }
         // threshold for person identification
-        if(targetSensor.equals("pd")){
+        if(targetSensor.equals("person_detection")){
             try {
-                JSONObject pidconfig = (new JSONObject(configData)).getJSONObject("pd");
-                pidconfig.put("value", 0);
-                configData = ((new JSONObject(configData)).put("pd",pidconfig)).toString();
+                JSONObject pdconfig = (new JSONObject(configData)).getJSONObject("person_detection");
+                pdconfig.put("value", 0);
+                configData = ((new JSONObject(configData)).put("person_detection",pdconfig)).toString();
 
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -354,7 +361,7 @@ public class ListActivity extends AppCompatActivity implements SensorEventListen
                 parameters.add(parameter);
             }
 
-            if ((key.equals("light") || key.equals("pd")) && configSensor.has("sampling_rate")) {
+            if ((key.equals("light") || key.equals("person_detection")) && configSensor.has("sampling_rate")) {
                 parameter = new Parameter("sampling_rate", configSensor.get("sampling_rate").toString(), "Int");
                 parameters.add(parameter);
             }
