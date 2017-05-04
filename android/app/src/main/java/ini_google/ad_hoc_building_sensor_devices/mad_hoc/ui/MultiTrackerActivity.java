@@ -85,6 +85,8 @@ public class MultiTrackerActivity extends AppCompatActivity{
             instanceID = bundle.get("instanceID").toString();
             deviceID = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
             sensors = database.getReference("install_sensors/" + instanceID + "/" + "camera/" + deviceID);
+            sensors.child("value").setValue("0");
+            sensors.child("last_modified").setValue(String.valueOf(new Date().getTime()));
 
             // Check for the camera permission before accessing the camera.  If the
             // permission is not granted yet, request permission.
@@ -114,7 +116,7 @@ public class MultiTrackerActivity extends AppCompatActivity{
                 @Override
                 public void onClick(View v) {
                     sensors.child("value").setValue(String.valueOf(idList.size()));
-                    sensors.child("last_modified").setValue(new Date().getTime());
+                    sensors.child("last_modified").setValue(String.valueOf(new Date().getTime()));
                 }
             });
 
@@ -154,7 +156,7 @@ public class MultiTrackerActivity extends AppCompatActivity{
             public void onDataChange(DataSnapshot dataSnapshot) {
                 try {
                     boolean enable = (dataSnapshot.child("camera").child(deviceID).child("value").getValue().equals("0"));
-                    System.out.println("enable:" + enable);
+                    System.out.println("camera enable:" + enable);
                     System.out.println("cvalue:" + dataSnapshot.child("camera").child(deviceID).child("value"));
                     confirmButton.setEnabled(enable);
                 } catch (Exception e) {

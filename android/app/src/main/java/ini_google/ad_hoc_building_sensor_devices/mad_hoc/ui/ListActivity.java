@@ -232,7 +232,8 @@ public class ListActivity extends AppCompatActivity implements SensorEventListen
                         } else if(deviceConfig.isEmpty()){
                             Toast.makeText(ListActivity.this, "device configuration is empty", Toast.LENGTH_LONG).show();
                         } else {
-                            Toast.makeText(ListActivity.this, "target sensor/actuator has been chosen", Toast.LENGTH_LONG).show();
+                            //Toast.makeText(ListActivity.this, "You cannot choose this sensor/actuator", Toast.LENGTH_LONG).show();
+                            Toast.makeText(ListActivity.this, "You cannot choose this sensor/actuator", Toast.LENGTH_LONG).show();
                         }
 
                     }
@@ -302,7 +303,7 @@ public class ListActivity extends AppCompatActivity implements SensorEventListen
         if(targetSensor.equals("person_detection")){
             try {
                 JSONObject pdconfig = (new JSONObject(configData)).getJSONObject("person_detection");
-                pdconfig.put("value", 0);
+                //pdconfig.put("value", 0);
                 configData = ((new JSONObject(configData)).put("person_detection",pdconfig)).toString();
 
             } catch (JSONException e) {

@@ -65,6 +65,7 @@ import ini_google.ad_hoc_building_sensor_devices.R;
 public class SensorActivity extends AppCompatActivity implements SensorEventListener{
     private static final String TAG = "SensorActivity";
     private final int RINGBUFSIZE = 5;
+    private final float deltaPD = 300.0f;
     private String androidID;
 
     private FirebaseDatabase database = FirebaseDatabase.getInstance();
@@ -371,6 +372,8 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
             // light sensor
             if(parameterType.equals("LIGHT") || parameterType.equals("PD")) {
                 mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
+                // initialize the value
+                sensors.child("value").setValue(0);
                 // ?
                 //avgReading = Integer.parseInt(config.get("threshold").toString());
                 //upperThreshold = Integer.parseInt(config.get("threshold_upper").toString());
@@ -474,7 +477,7 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
         if(this.type.equals("PD")) {
             float sensor_value = event.values[0];
             sensorValue.setText(Float.toString(sensor_value));
-            sensors.child("value").setValue(0);
+            //sensors.child("value").setValue(0);
             // how to get threshold?
             float avg_sensor_value = 0.0f;
             if(ringbuffer.size() == RINGBUFSIZE) {
@@ -485,21 +488,27 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
             sum += sensor_value;
             avg_sensor_value = sum / ringbuffer.size();
 
-            System.out.println("avg_sensor_value:" + avg_sensor_value + " lightThread:" + lightThreshold);
-            if(Math.abs(lightThreshold - avg_sensor_value) > 150.0) {
+            System.out.println("avg_sensor_value:" + avg_sensor_value + " lightThread:" + lightThreshold + "count:" + Onecount);
+            if(Math.abs(lightThreshold - avg_sensor_value) > deltaPD) {
                 Onecount++;
                 //sensors.child("value").setValue(1);
                 //sensors.child("last_modified").setValue(Long.toString(new Date().getTime()));
+            } else {
+                Onecount = 0;
             }
+
 
             if(Onecount == 3) {
                 sensors.child("value").setValue(1);
+                System.out.println("pd write 1" );
                 sensors.child("last_modified").setValue(Long.toString(new Date().getTime()));
-                Onecount = 0;
-            } else {
-                sensors.child("value").setValue(0);
-                //sensors.child("last_modified").setValue(Long.toString(new Date().getTime()));
+                //Onecount = 0;
             }
+//            else {
+//                sensors.child("value").setValue(0);
+//                //Onecount = 0;
+//                //sensors.child("last_modified").setValue(Long.toString(new Date().getTime()));
+//            }
 
             //sensors.child("last_modified").setValue(Long.toString(new Date().getTime()));
         }
